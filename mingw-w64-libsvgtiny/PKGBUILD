@@ -1,0 +1,83 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=libsvgtiny
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+pkgver=0.1.6
+pkgrel=1
+pkgdesc="SVG Tiny library (mingw-w64)"
+arch=('any')
+url='http://www.netsurf-browser.org/projects/libsvgtiny/'
+license=('MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-libparserutils>=0.2.4" "${MINGW_PACKAGE_PREFIX}-libwapcaplet>=0.4.1"
+         "${MINGW_PACKAGE_PREFIX}-libdom>=0.3.2")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake")
+options=('strip' 'staticlibs')
+source=("git://git.netsurf-browser.org/libsvgtiny.git#tag=release/$pkgver"
+       CMakeLists.txt)
+md5sums=('SKIP'
+         'SKIP')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"/${_realname}
+  rm -f CMakeLists.txt
+  cp ../CMakeLists.txt .
+#  apply_patch_with_msg inttypes-fix.patch
+#    0002-A-less-important-fix.patch
+}
+
+build() {
+  cd "${srcdir}"/${_realname}
+  [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
+  mkdir -p "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
+
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    ${MINGW_PREFIX}/bin/cmake \
+      -G'MSYS Makefiles' \
+      -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+      "${extra_config[@]}" \
+      -DBUILD_{SHARED,STATIC}_LIBS=ON \
+      ../${_realname}
+
+  make
+}
+
+
+check() {
+  cd "${srcdir}"/build-${CARCH}
+  make test
+}
+
+package() {
+  cd "${srcdir}"/build-${CARCH}
+  make install DESTDIR="${pkgdir}"
+
+  install -Dm644 ${srcdir}/${_realname}/COPYING \
+    ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING
+}

@@ -1,0 +1,80 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=libcss
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+pkgver=0.8.0
+pkgrel=1
+pkgdesc="CSS parser and selection engine (mingw-w64)"
+arch=('any')
+url='http://www.netsurf-browser.org/projects/libcss/'
+license=('MIT')
+depends=("${MINGW_PACKAGE_PREFIX}-libparserutils>=0.2.4" "${MINGW_PACKAGE_PREFIX}-libwapcaplet>=0.4.1")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake")
+options=('strip' 'staticlibs')
+source=("http://download.netsurf-browser.org/libs/releases/${_realname}-$pkgver-src.tar.gz"
+        CMakeLists.txt)
+sha256sums=('35a0490d98c23e09b8d2b5e4619926131c5b98da7a9db2ed00322f63fbc2ad5f'
+         'SKIP')
+
+# Helper macros to help make tasks easier #
+apply_patch_with_msg() {
+  for _patch in "$@"
+  do
+    msg2 "Applying $_patch"
+    patch -Nbp1 -i "${srcdir}/$_patch"
+  done
+}
+
+del_file_exists() {
+  for _fname in "$@"
+  do
+    if [ -f $_fname ]; then
+      rm -rf $_fname
+    fi
+  done
+}
+# =========================================== #
+
+prepare() {
+  cd "${srcdir}"/${_realname}-${pkgver}
+  cp ../CMakeLists.txt .
+#  apply_patch_with_msg fix-parsegen.patch
+}
+
+build() {
+  cd "${srcdir}"/${_realname}-${pkgver}
+  [[ -d "${srcdir}"/build-${CARCH} ]] && rm -rf "${srcdir}"/build-${CARCH}
+  mkdir -p "${srcdir}"/build-${CARCH} && cd "${srcdir}"/build-${CARCH}
+
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    ${MINGW_PREFIX}/bin/cmake \
+      -G'MSYS Makefiles' \
+      -DCMAKE_INSTALL_PREFIX=${MINGW_PREFIX} \
+      "${extra_config[@]}" \
+      -DBUILD_{SHARED,STATIC}_LIBS=ON \
+      ../${_realname}-${pkgver}
+
+  make
+}
+
+
+check() {
+  cd "${srcdir}"/build-${CARCH}
+  make test
+}
+
+package() {
+  cd "${srcdir}"/build-${CARCH}
+  make install DESTDIR="${pkgdir}"
+
+  install -Dm644 ${srcdir}/${_realname}-${pkgver}/COPYING \
+    ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/COPYING
+}
