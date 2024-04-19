@@ -1,0 +1,42 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=dxc
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+_pkgver=1.8.2403.2
+pkgver=2024_03_29
+pkgrel=1
+pkgdesc="A compiler for HLSL to DXIL (DirectX Intermediate Language). (mingw-w64)"
+arch=('any')
+mingw_arch=('mingw64' 'ucrt64' 'clang64' 'clangarm64')
+url='https://github.com/microsoft/DirectXShaderCompiler/'
+license=('MIT')
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-ninja"
+             "${MINGW_PACKAGE_PREFIX}-cc")
+conflicts=("${MINGW_PACKAGE_PREFIX}-fxc2")
+options=(!strip)
+source=("https://github.com/microsoft/DirectXShaderCompiler/releases/download/v${_pkgver}/dxc_${pkgver}.zip")
+sha256sums=('74874e9741f027d4321263af58d24ae0f6dde2351230680b151c87144cc0a02a')
+
+package() {
+  cd "${srcdir}/bin"
+  mkdir -p ${pkgdir}${MINGW_PREFIX}/bin
+  mkdir -p ${pkgdir}${MINGW_PREFIX}/share/licenses
+  case ${CARCH} in
+     "i686")
+	   install -Dm644 x86/* ${pkgdir}${MINGW_PREFIX}/bin
+	 ;;
+	 "aarch64")
+	    install -Dm644 arm64/* ${pkgdir}${MINGW_PREFIX}/bin
+	 ;;
+	 "x86_64")
+        install -Dm644 x64/* ${pkgdir}${MINGW_PREFIX}/bin
+	 ;;
+	 *)
+  esac
+  
+  install -Dm644 "${srcdir}/LICENSE-LLVM.txt" ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}
+  install -Dm644 "${srcdir}/LICENSE-MIT.txt" ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}
+  install -Dm644 "${srcdir}/LICENSE-MS.txt" ${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}
+}
