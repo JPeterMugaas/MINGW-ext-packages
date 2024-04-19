@@ -1,0 +1,55 @@
+# Maintainer: J. Peter Mugaas <jpmugaas@suddenlink.net>
+
+_realname=directxtk12
+_rn=DirectXTK12
+pkgbase=mingw-w64-${_realname}
+pkgname=("${MINGW_PACKAGE_PREFIX}-${_realname}")
+pkgver=1.5.8
+_tag=feb2024
+pkgrel=1
+pkgdesc="DirectX Tool Kit for DirectX 12 (mingw-w64)"
+arch=('any')
+mingw_arch=('mingw64' 'ucrt64' 'clang64' 'clangarm64')
+url='http://go.microsoft.com/fwlink/?LinkID=615561'
+license=('MIT')
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-ninja"
+             "${MINGW_PACKAGE_PREFIX}-cc")
+source=("https://github.com/microsoft/DirectXTK12/archive/refs/tags/${_tag}.tar.gz")
+sha256sums=('fe432e9e28a53db35b18bb3d24942e62a726ac61b854403001fe962a2ff15bfa')
+
+build() {
+  cd "${srcdir}/${_rn}-${_tag}"
+  mkdir -p "${srcdir}/build-${MSYSTEM}" && cd "${srcdir}/build-${MSYSTEM}"
+
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+    "${MINGW_PREFIX}"/bin/cmake.exe \
+      -GNinja \
+      -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}" \
+      "${extra_config[@]}" \
+	  -DBUILD_DXIL_SHADERS=ON \
+      ../${_rn}-${_tag}
+
+  "${MINGW_PREFIX}"/bin/cmake.exe --build .
+}
+
+check() {
+  cd "${srcdir}/build-${MSYSTEM}"
+
+  "${MINGW_PREFIX}"/bin/cmake.exe --build . --target test
+}
+
+package() {
+  cd "${srcdir}/build-${MSYSTEM}"
+
+  DESTDIR="${pkgdir}" "${MINGW_PREFIX}"/bin/cmake.exe --install .
+
+  install -Dm644 "${srcdir}/${_rn}-${_tag}/LICENSE" "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+}
